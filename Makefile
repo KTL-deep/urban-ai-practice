@@ -15,6 +15,10 @@ format:
 venv: # затем необходимо активировать: source .venv/bin/activate
 	python3 -m venv .venv
 
+.PHONY: venv-activate
+venv-activate: # активация виртуального окружения в новом PowerShell (выход: exit)
+	powershell -NoExit -Command ". '.\.venv\Scripts\Activate.ps1'"
+
 install: # простая установка зависимостей без editable режима
 	pip install .
 
