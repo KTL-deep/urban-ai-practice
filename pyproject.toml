@@ -32,6 +32,11 @@ version_scheme = "post-release"
 local_scheme = "no-local-version"
 
 [project.optional-dependencies]
+dashboard = [ # автономная генерация HTML-отчёта из сохранённых результатов исследования
+    "branca>=0.6,<1",
+    "folium>=0.14,<1",
+    "matplotlib>=3.7,<4",
+]
 dev = [ # зависимости, необходимые для разработки библиотеки, но не для её использования
     "black[jupyter]==22.3",     # Форматирование, включая поддержку Jupyter
     "mapclassify==2.6.1",       # Визуализация данных в Jupyter
