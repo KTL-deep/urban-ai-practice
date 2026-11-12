@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_loader import DataError, load_study
+from data_loader import DataError, load_study, same_study_reference
 from export import compare_frame, csv_bytes, geojson, quarters_frame
 from model import calculate, validate_schools, verify_baseline
 from search import search
@@ -64,7 +64,7 @@ def main():
         prior = json.loads(existing.read_text(encoding="utf-8"))
         if set(prior.get("scenarios", {})) - {"А", "Б", "В"}:
             raise DataError("Сохранены дополнительные пользовательские сценарии; сохраните их отдельно перед повторным экспериментом")
-        if prior.get("source_directory") != str(study.directory.resolve()) or any(
+        if not same_study_reference(study.directory, prior.get("source_directory")) or any(
             name in prior.get("scenarios", {}) and prior["scenarios"][name]["schools"] != scenarios[name]["schools"]
             for name in scenarios
         ):

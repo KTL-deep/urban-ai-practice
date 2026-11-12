@@ -1,6 +1,7 @@
 """Read-only access to the saved Pavlovsk study; no download or fabrication."""
 
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 
@@ -30,7 +31,27 @@ class Study:
 
 
 def default_directory():
-    return Path(__file__).resolve().parents[1] / "pavlovsk_study_data"
+    original = Path(__file__).resolve().parents[1] / "pavlovsk_study_data"
+    return original if original.exists() else Path(__file__).resolve().parent / "input"
+
+
+def same_study_reference(directory, recorded_directory):
+    """Accept a verified portable snapshot of the original read-only inputs."""
+    directory = Path(directory).resolve()
+    if str(directory) == recorded_directory:
+        return True
+    snapshot = Path(__file__).resolve().parent / "input"
+    if directory != snapshot.resolve():
+        return False
+    manifest_path = snapshot / "manifest.json"
+    if not manifest_path.is_file():
+        return False
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("original_directory") != recorded_directory:
+        return False
+    return all((snapshot / name).is_file() and
+               hashlib.sha256((snapshot / name).read_bytes()).hexdigest() == digest
+               for name, digest in manifest.get("sha256", {}).items()) and bool(manifest.get("sha256"))
 
 
 def _ids(values, label):

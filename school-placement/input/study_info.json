@@ -1,0 +1,13 @@
+{
+  "territory": "Павловск, Пушкинский район, Санкт-Петербург, Россия",
+  "osm_relation_id": 359180,
+  "data_source": "IDUclub/blocksnet-data v0.0.1 (saint_petersburg.zip)",
+  "blocks_source": "готовые кварталы BlocksNet, отфильтрованы по границе Павловска",
+  "travel_mode": "drive (автомобиль)",
+  "travel_time_units": "minutes",
+  "graph_source": "https://github.com/IDUclub/blocksnet-data/releases/download/v0.0.1/saint_petersburg.zip",
+  "crs_for_calculations": "EPSG:32636",
+  "blocks": 188,
+  "blocksnet_version": "1.0.0a9",
+  "iduedu_version": "0.4.1"
+}

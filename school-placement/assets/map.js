@@ -12,3 +12,5 @@ window.dashExtensions.schoolPlacement = {
     }
   }
 };
+// dash-leaflet 1.1.x resolves Namespace variables directly on window.
+window.schoolPlacement = window.dashExtensions.schoolPlacement;

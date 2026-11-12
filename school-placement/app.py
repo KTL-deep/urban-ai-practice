@@ -12,7 +12,7 @@ import dash_leaflet as dl
 from dash_extensions.javascript import Namespace
 import pandas as pd
 
-from data_loader import DataError, load_study
+from data_loader import DataError, load_study, same_study_reference
 from export import compare_frame, csv_bytes, geojson, quarters_frame
 from model import calculate, verify_baseline
 from search import search
@@ -24,6 +24,10 @@ RANK_LABELS = {"block_id": "ID квартала", "new_capacity_places": "Нов
                "baseline_deficit_places": "Исходный дефицит, мест", "remaining_deficit_places": "Остаточный дефицит, мест",
                "reduction_places": "Сокращение, мест", "reduction_pct": "Сокращение, %",
                "status": "Статус", "error": "Ошибка"}
+LAND_USE_LABELS = {"residential": "жилая", "business": "общественно-деловая",
+                   "industrial": "промышленная", "agriculture": "сельскохозяйственная",
+                   "recreation": "рекреационная", "transport": "транспортная",
+                   "special": "специальная"}
 
 
 def color(value, mode):
@@ -32,6 +36,21 @@ def color(value, mode):
     if mode == "Изменение":
         return "#b5424d" if value < -0.001 else "#dbe7eb" if value < 0.001 else "#96c9b7" if value < .15 else "#197a73"
     return PALETTE[min(5, max(0, int(float(value) * 6)))]
+
+
+def legend_component(mode):
+    if mode == "Изменение":
+        items = [("#b5424d", "< −0,001"), ("#dbe7eb", "около 0"),
+                 ("#96c9b7", "+0,001…+0,15"), ("#197a73", "≥ +0,15")]
+        heading = "Изменение обеспеченности, доля (сценарий минус исходное)"
+    else:
+        items = list(zip(PALETTE, ("0–0,16", "0,17–0,33", "0,34–0,49", "0,50–0,66",
+                                      "0,67–0,83", "0,84–1,00")))
+        heading = "Обеспеченность, доля 0–1; шкала фиксирована между сценариями"
+    items.append(("#cbd5e1", "нет спроса / нет данных"))
+    return html.Div([html.Strong(heading), html.Div([
+        html.Span([html.Span(className="swatch", style={"backgroundColor": shade}), label],
+                  className="legend-item") for shade, label in items], className="legend-items")])
 
 
 def map_data(study, baseline, result, mode, selected):
@@ -68,7 +87,7 @@ def make_app(data_dir=None, results_dir=None):
     if saved_path.exists():
         try:
             saved_document = json.loads(saved_path.read_text(encoding="utf-8"))
-            if saved_document.get("source_directory") != str(study.directory.resolve()):
+            if not same_study_reference(study.directory, saved_document.get("source_directory")):
                 raise DataError(f"{saved_path} относится к другому каталогу данных; сохраните файл отдельно перед сменой набора")
             saved_scenarios = saved_document.get("scenarios", {})
             for item in saved_scenarios.values():
@@ -80,19 +99,29 @@ def make_app(data_dir=None, results_dir=None):
     saved_ranking = []
     saved_rank_status = "Автоматический поиск ещё не запускался."
     ranking_path = saved_path.parent / "automatic_ranking.csv"
+    if not ranking_path.is_file() and (saved_path.parent / "automatic_ranking_incomplete.csv").is_file():
+        ranking_path = saved_path.parent / "automatic_ranking_incomplete.csv"
     summary_path = (saved_path.parent / "automatic_search.json" if (saved_path.parent / "automatic_search.json").is_file()
                     else saved_path.parent / "experiment_summary.json")
+    if ranking_path.name == "automatic_ranking_incomplete.csv":
+        summary_path = saved_path.parent / "automatic_search_incomplete.json"
     if ranking_path.is_file() and summary_path.is_file():
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
-        if summary.get("source_directory") != str(study.directory.resolve()):
+        if not same_study_reference(study.directory, summary.get("source_directory")):
             raise DataError("Рейтинг принадлежит другому каталогу данных")
         ranked = pd.read_csv(ranking_path, sep=";", encoding="utf-8-sig")
         if len(ranked) != len(study.population) or set(ranked.block_id) != set(study.population.index):
             raise DataError("Сохранённый рейтинг не охватывает все исходные кварталы")
-        saved_ranking = ranked.astype(object).where(pd.notna(ranked), None).to_dict("records")
+        saved_ranking = [{**row, "id": int(row["block_id"])} for row in
+                         ranked.astype(object).where(pd.notna(ranked), None).to_dict("records")]
         saved_rank_status = (f"Полный перебор {summary['blocks_checked']} кварталов. Лучшие ID: "
                              + ", ".join(map(str, summary["winners"])) + "." if summary.get("complete")
                              else f"Неполный перебор: {summary['errors']} ошибок; глобальный оптимум не установлен.")
+        later_incomplete = saved_path.parent / "automatic_ranking_incomplete.csv"
+        if (ranking_path.name == "automatic_ranking.csv" and later_incomplete.is_file()
+                and later_incomplete.stat().st_mtime > ranking_path.stat().st_mtime):
+            saved_rank_status += (" После этого выполнялся неполный поиск: его ошибки сохранены "
+                                  "в automatic_ranking_incomplete.csv; показан предыдущий полный рейтинг.")
 
     def persist(scenarios):
         saved_path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,7 +186,7 @@ def make_app(data_dir=None, results_dir=None):
             html.Section(className="panel map-panel", children=[
                 html.Div(className="panel-heading", children=[html.H2("Карта кварталов"), dcc.RadioItems(
                     id="map-mode", options=["Исходное состояние", "Сценарий", "Изменение"], value="Исходное состояние", inline=True)]),
-                dl.Map(id="map", center=[(bounds[1]+bounds[3])/2, (bounds[0]+bounds[2])/2], zoom=12,
+                dl.Map(id="map", center=[(bounds[1]+bounds[3])/2, (bounds[0]+bounds[2])/2],
                        bounds=[[bounds[1], bounds[0]], [bounds[3], bounds[2]]], children=[dl.LayerGroup(id="map-layers")], style={"height": "570px", "width": "100%"}),
                 html.Div(id="legend", className="legend"), html.Div(id="quarter-detail", className="detail")
             ])]),
@@ -270,7 +299,10 @@ def make_app(data_dir=None, results_dir=None):
         with jobs_lock:
             jobs.pop(token, None)
         suffix = "" if job["places"] == 600 else f"_{job['places']}"
+        if not result.complete:
+            suffix += "_incomplete"
         try:
+            saved_path.parent.mkdir(parents=True, exist_ok=True)
             (saved_path.parent / f"automatic_ranking{suffix}.csv").write_bytes(csv_bytes(pd.DataFrame(result.candidates)))
             (saved_path.parent / f"automatic_search{suffix}.json").write_text(json.dumps({
                 "source_directory": str(study.directory.resolve()), "capacity_places": job["places"],
@@ -281,13 +313,16 @@ def make_app(data_dir=None, results_dir=None):
         status = (f"Полный перебор {result.checked} кварталов. Лучшие ID: {', '.join(map(str, result.winners))}." if result.complete
                   else f"Неполный перебор: {result.errors} ошибок из {result.checked}. Глобальный оптимум НЕ установлен.")
         updated = dict(scenarios)
+        if not result.complete and "В" in scenarios:
+            status += " Ранее сохранённый В относится к предыдущему успешному поиску."
         if result.complete and result.winners and job["places"] == 600:
             updated["В"] = {"schools": [[result.winners[0], job["places"]]], "reason": "Полный перебор; равноценные кварталы: " + ", ".join(map(str, result.winners))}
             try:
                 persist(updated)
             except OSError as exc:
                 line += f" Сценарий В не удалось записать на диск: {exc}."
-        return (line, True, list(result.candidates), [{"name": v, "id": k} for k, v in RANK_LABELS.items()],
+        return (line, True, [{**row, "id": row["block_id"]} for row in result.candidates],
+                [{"name": v, "id": k} for k, v in RANK_LABELS.items()],
                 status, updated, "В" if result.complete and result.winners and job["places"] == 600 else no_update,
                 "Сценарий" if result.complete and result.winners and job["places"] == 600 else no_update,
                 result.winners[0] if result.complete and result.winners and job["places"] == 600 else no_update)
@@ -298,9 +333,11 @@ def make_app(data_dir=None, results_dir=None):
 
     @app.callback(Output("view", "value", allow_duplicate=True), Output("draft", "data", allow_duplicate=True),
                   Output("map-mode", "value", allow_duplicate=True),
+                  Output("selected", "data", allow_duplicate=True), Output("block", "value", allow_duplicate=True),
+                  Output("reason", "value"), Output("places", "value"),
                   Input("reset", "n_clicks"), prevent_initial_call=True)
     def reset_view(_):
-        return "Исходное состояние", [], "Исходное состояние"
+        return "Исходное состояние", [], "Исходное состояние", None, None, "", 600
 
     @app.callback(Output("map-layers", "children"), Output("legend", "children"), Output("quarter-detail", "children"),
                   Output("totals", "children"), Output("quarters", "data"), Output("quarters", "columns"),
@@ -320,12 +357,12 @@ def make_app(data_dir=None, results_dir=None):
         if selected in study.population.index:
             row = result.rows.loc[selected]
             land_use = study.blocks.loc[selected].get("land_use", "не определено")
+            land_use = LAND_USE_LABELS.get(str(land_use), land_use)
             detail = (f"Квартал {selected} · население {_fmt(row.population)} чел. · вместимость {_fmt(int(row.capacity))} мест "
                       f"· спрос {_fmt(int(row.demand))} мест · дефицит {_fmt(int(row.deficit))} мест "
                       f"· обеспеченность {_fmt(row.provision_strong)} (доля) · использование: {land_use}. "
                       "Возможность строительства требуется проверить отдельно.")
-        legend = ("Изменение доли: красный — снижение · серый — 0 · бирюзовый — улучшение; серый квартал — показатель не определён." if mode == "Изменение"
-                  else "Обеспеченность, доля 0–1: красный — низкая, бирюзовый — высокая; серый — спрос равен нулю. Школа обозначена жёлтым кругом.")
+        legend = legend_component(mode)
         return (figure(result, mode, selected), legend, detail, cards,
                 frame.astype(object).where(pd.notna(frame), None).to_dict("records"), [{"name": c, "id": c} for c in frame],
                 comparison.to_dict("records"), [{"name": c, "id": c} for c in comparison])
@@ -333,14 +370,17 @@ def make_app(data_dir=None, results_dir=None):
     @app.callback(Output("view", "value", allow_duplicate=True), Output("selected", "data", allow_duplicate=True),
                   Output("map-mode", "value", allow_duplicate=True),
                   Output("scenarios", "data", allow_duplicate=True), Input("ranking", "active_cell"),
-                  State("ranking", "derived_virtual_data"), State("ranking", "data"), State("scenarios", "data"), State("auto-places", "value"), prevent_initial_call=True)
-    def select_rank(cell, visible, all_rows, scenarios, places):
+                   State("ranking", "derived_viewport_data"), State("ranking", "data"), State("scenarios", "data"), prevent_initial_call=True)
+    def select_rank(cell, visible, all_rows, scenarios):
         if not cell:
             return no_update, no_update, no_update, no_update
         rows = visible if visible is not None else all_rows
-        if not rows or cell["row"] >= len(rows) or rows[cell["row"]]["status"] != "Рассчитан":
+        if cell.get("row_id") is not None:
+            row = next((r for r in (all_rows or []) if r["block_id"] == cell["row_id"]), None)
+        else:
+            row = rows[cell["row"]] if rows and 0 <= cell["row"] < len(rows) else None
+        if row is None or row["status"] != "Рассчитан":
             return no_update, no_update, no_update, no_update
-        row = rows[cell["row"]]
         updated = dict(scenarios)
         updated["Кандидат"] = {"schools": [[row["block_id"], row["new_capacity_places"]]], "reason": "Просмотр строки рейтинга"}
         return "Кандидат", row["block_id"], "Сценарий", updated
@@ -359,7 +399,7 @@ def make_app(data_dir=None, results_dir=None):
             frame = compare_frame({key: (scenario_result(data["schools"]), data["reason"]) for key, data in scenarios.items()}, baseline)
             return dcc.send_bytes(csv_bytes(frame), "school_scenarios.csv")
         if kind == "export-ranking" and ranking:
-            return dcc.send_bytes(csv_bytes(pd.DataFrame(ranking)), "school_ranking.csv")
+            return dcc.send_bytes(csv_bytes(pd.DataFrame(ranking).drop(columns=["id"], errors="ignore")), "school_ranking.csv")
         return no_update
     return app
 

@@ -1,0 +1,11 @@
+{
+  "original_directory": "C:\\PYTHON_PROJECTS\\urban-ai-practice\\pavlovsk_study_data",
+  "sha256": {
+    "blocks.geojson": "8655edfda6fb0df74df00b2dfdf63a2592471cccab189bd7af890bbd1ebd4678",
+    "accessibility_matrix_drive.csv": "9a026f450b5ba1306490abde0b2e1d95b31e1fcac87e2e3308d05866f3c1e1a8",
+    "provision_schools.csv": "cbc150cee704d0d517699ef88a05508a45f9e64cc14c55e6621f0911a3fd57b0",
+    "study_info.json": "f45f6983ec71f623ed53b571c96270a87f5cdcac89617704214ecb2f4d95ed49",
+    "boundary.geojson": "e4f4b5b9c2a1c7354aa58e909a7bed1da87cee8e86a5c052f565771b00e28ef9"
+  },
+  "note": "Exact read-only snapshot of study outputs. Not the 405 MB source archive."
+}
