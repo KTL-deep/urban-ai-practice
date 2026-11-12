@@ -1,0 +1,292 @@
+{
+  "source_directory": "C:\\PYTHON_PROJECTS\\urban-ai-practice\\pavlovsk_study_data",
+  "manual_choices_sha256": "daee53f04e2d33b7b0365f76204a079ef30acc94da050c5e9c75c6182f9187aa",
+  "blocks_checked": 188,
+  "errors": 0,
+  "complete": true,
+  "winners": [
+    163
+  ],
+  "baseline": {
+    "population": 20206.0,
+    "demand": 2504,
+    "capacity": 2424,
+    "served": 2424,
+    "deficit": 80,
+    "provision": 0.9680511182108626,
+    "added_capacity": 0
+  },
+  "scenarios": {
+    "А": {
+      "schools": [
+        [
+          102,
+          600
+        ]
+      ],
+      "totals": {
+        "population": 20206.0,
+        "demand": 2504,
+        "capacity": 3024,
+        "served": 2472,
+        "deficit": 32,
+        "provision": 0.987220447284345,
+        "added_capacity": 600,
+        "baseline_deficit": 80,
+        "reduction": 48,
+        "reduction_pct": 60.0
+      },
+      "improved_blocks": 29,
+      "remaining_deficit_blocks": 7,
+      "most_improved": [
+        [
+          73,
+          4.0
+        ],
+        [
+          68,
+          3.0
+        ],
+        [
+          99,
+          3.0
+        ],
+        [
+          101,
+          3.0
+        ],
+        [
+          102,
+          3.0
+        ],
+        [
+          58,
+          2.0
+        ],
+        [
+          64,
+          2.0
+        ],
+        [
+          75,
+          2.0
+        ],
+        [
+          103,
+          2.0
+        ],
+        [
+          107,
+          2.0
+        ]
+      ],
+      "remaining_deficits": [
+        [
+          77,
+          5.0
+        ],
+        [
+          78,
+          4.0
+        ],
+        [
+          84,
+          3.0
+        ],
+        [
+          85,
+          4.0
+        ],
+        [
+          86,
+          4.0
+        ],
+        [
+          121,
+          1.0
+        ],
+        [
+          153,
+          11.0
+        ]
+      ]
+    },
+    "Б": {
+      "schools": [
+        [
+          102,
+          300
+        ],
+        [
+          73,
+          300
+        ]
+      ],
+      "totals": {
+        "population": 20206.0,
+        "demand": 2504,
+        "capacity": 3024,
+        "served": 2481,
+        "deficit": 23,
+        "provision": 0.990814696485623,
+        "added_capacity": 600,
+        "baseline_deficit": 80,
+        "reduction": 57,
+        "reduction_pct": 71.25
+      },
+      "improved_blocks": 31,
+      "remaining_deficit_blocks": 5,
+      "most_improved": [
+        [
+          77,
+          5.0
+        ],
+        [
+          73,
+          4.0
+        ],
+        [
+          78,
+          4.0
+        ],
+        [
+          68,
+          3.0
+        ],
+        [
+          99,
+          3.0
+        ],
+        [
+          101,
+          3.0
+        ],
+        [
+          102,
+          3.0
+        ],
+        [
+          58,
+          2.0
+        ],
+        [
+          64,
+          2.0
+        ],
+        [
+          75,
+          2.0
+        ]
+      ],
+      "remaining_deficits": [
+        [
+          84,
+          3.0
+        ],
+        [
+          85,
+          4.0
+        ],
+        [
+          86,
+          4.0
+        ],
+        [
+          121,
+          1.0
+        ],
+        [
+          153,
+          11.0
+        ]
+      ]
+    },
+    "В": {
+      "schools": [
+        [
+          163,
+          600
+        ]
+      ],
+      "totals": {
+        "population": 20206.0,
+        "demand": 2504,
+        "capacity": 3024,
+        "served": 2482,
+        "deficit": 22,
+        "provision": 0.9912140575079872,
+        "added_capacity": 600,
+        "baseline_deficit": 80,
+        "reduction": 58,
+        "reduction_pct": 72.5
+      },
+      "improved_blocks": 31,
+      "remaining_deficit_blocks": 5,
+      "most_improved": [
+        [
+          73,
+          4.0
+        ],
+        [
+          85,
+          4.0
+        ],
+        [
+          86,
+          4.0
+        ],
+        [
+          68,
+          3.0
+        ],
+        [
+          84,
+          3.0
+        ],
+        [
+          99,
+          3.0
+        ],
+        [
+          101,
+          3.0
+        ],
+        [
+          102,
+          3.0
+        ],
+        [
+          58,
+          2.0
+        ],
+        [
+          64,
+          2.0
+        ]
+      ],
+      "remaining_deficits": [
+        [
+          77,
+          5.0
+        ],
+        [
+          78,
+          4.0
+        ],
+        [
+          131,
+          1.0
+        ],
+        [
+          153,
+          11.0
+        ],
+        [
+          183,
+          1.0
+        ]
+      ]
+    }
+  },
+  "manual_A_matches_any_best": false
+}

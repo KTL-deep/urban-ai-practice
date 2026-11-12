@@ -1,0 +1,18 @@
+{
+  "territory": "Павловск, Пушкинский район, Санкт-Петербург, Россия",
+  "source_directory": "C:\\PYTHON_PROJECTS\\urban-ai-practice\\pavlovsk_study_data",
+  "blocks": 188,
+  "totals": {
+    "population": 20206.0,
+    "demand": 2504,
+    "capacity": 2424,
+    "served": 2424,
+    "deficit": 80,
+    "provision": 0.9680511182108626,
+    "added_capacity": 0
+  },
+  "method": "BlocksNet 1.0.0a9 competitive_provision",
+  "travel_mode": "drive",
+  "travel_time_limit_minutes": 15,
+  "demand_places_per_1000_residents": 120
+}

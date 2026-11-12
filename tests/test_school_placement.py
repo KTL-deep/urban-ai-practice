@@ -182,7 +182,7 @@ def test_zero_demand_has_undefined_fraction(study_dir):
 
 def test_browser_renders_and_map_table_share_results(study_dir):
     from app import make_app, map_data
-    instance = make_app(study_dir)
+    instance = make_app(study_dir, study_dir.parent / "results")
     response = instance.server.test_client().get("/")
     assert response.status_code == 200
     assert b"dash" in response.data.lower()
@@ -205,3 +205,15 @@ def test_browser_renders_and_map_table_share_results(study_dir):
     features = map_data(study, base, scenario, "Сценарий", 1)["features"]
     assert {f["properties"]["block_id"] for f in features} == set(scenario.rows.index)
     assert features[0]["properties"]["map_color"] != map_data(study, base, scenario, "Исходное состояние", 1)["features"][0]["properties"]["map_color"]
+
+
+def test_reproduction_uses_only_original_notebook_code():
+    from reproduce_study import CELLS
+    notebook = json.loads((ROOT.parent / "examples" / "pavlovsk_study.ipynb").read_text(encoding="utf-8"))
+    for stage, indices in CELLS.items():
+        if stage == "verify":
+            assert not indices
+            continue
+        assert indices
+        assert all(notebook["cells"][i]["cell_type"] == "code" for i in indices)
+    assert 16 in CELLS["all"] and 21 in CELLS["all"]

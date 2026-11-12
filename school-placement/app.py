@@ -20,6 +20,10 @@ from search import search
 
 STYLE = Namespace("schoolPlacement", "map")("style")
 PALETTE = ["#b5424d", "#d66a50", "#e7ae6a", "#c8d8a2", "#5ca5a0", "#197a73"]
+RANK_LABELS = {"block_id": "ID квартала", "new_capacity_places": "Новая школа, мест",
+               "baseline_deficit_places": "Исходный дефицит, мест", "remaining_deficit_places": "Остаточный дефицит, мест",
+               "reduction_places": "Сокращение, мест", "reduction_pct": "Сокращение, %",
+               "status": "Статус", "error": "Ошибка"}
 
 
 def color(value, mode):
@@ -45,7 +49,7 @@ def _fmt(value):
     return "—" if value is None or pd.isna(value) else f"{value:,.1f}".replace(",", " ") if isinstance(value, float) else f"{value:,}".replace(",", " ")
 
 
-def make_app(data_dir=None):
+def make_app(data_dir=None, results_dir=None):
     study = load_study(data_dir)
     baseline = calculate(study)
     verification = verify_baseline(baseline, study.saved_provision)
@@ -59,7 +63,7 @@ def make_app(data_dir=None):
     jobs_lock = Lock()
     from uuid import uuid4
 
-    saved_path = Path(__file__).parent / "results" / "scenarios.json"
+    saved_path = (Path(results_dir) if results_dir is not None else Path(__file__).parent / "results") / "scenarios.json"
     saved_scenarios = {}
     if saved_path.exists():
         try:
@@ -72,6 +76,23 @@ def make_app(data_dir=None):
                 validate_schools([tuple(pair) for pair in item["schools"]], set(study.population.index))
         except (ValueError, KeyError, TypeError) as exc:
             raise DataError(f"Некорректный сохранённый сценарий {saved_path}: {exc}") from exc
+
+    saved_ranking = []
+    saved_rank_status = "Автоматический поиск ещё не запускался."
+    ranking_path = saved_path.parent / "automatic_ranking.csv"
+    summary_path = (saved_path.parent / "automatic_search.json" if (saved_path.parent / "automatic_search.json").is_file()
+                    else saved_path.parent / "experiment_summary.json")
+    if ranking_path.is_file() and summary_path.is_file():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if summary.get("source_directory") != str(study.directory.resolve()):
+            raise DataError("Рейтинг принадлежит другому каталогу данных")
+        ranked = pd.read_csv(ranking_path, sep=";", encoding="utf-8-sig")
+        if len(ranked) != len(study.population) or set(ranked.block_id) != set(study.population.index):
+            raise DataError("Сохранённый рейтинг не охватывает все исходные кварталы")
+        saved_ranking = ranked.astype(object).where(pd.notna(ranked), None).to_dict("records")
+        saved_rank_status = (f"Полный перебор {summary['blocks_checked']} кварталов. Лучшие ID: "
+                             + ", ".join(map(str, summary["winners"])) + "." if summary.get("complete")
+                             else f"Неполный перебор: {summary['errors']} ошибок; глобальный оптимум не установлен.")
 
     def persist(scenarios):
         saved_path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,8 +167,10 @@ def make_app(data_dir=None):
         html.Section(className="panel", children=[html.H2("По кварталам"), dash_table.DataTable(id="quarters", page_size=15, sort_action="native", filter_action="native", style_table={"overflowX": "auto"})]),
         html.Section(className="panel", children=[html.H2("Рейтинг размещения одной школы"),
             html.P("Нажмите строку рейтинга, чтобы открыть расчёт кандидата на карте."),
-            dash_table.DataTable(id="ranking", page_size=15, sort_action="native", style_table={"overflowX": "auto"}),
-            html.Div(id="ranking-status")]),
+            dash_table.DataTable(id="ranking", data=saved_ranking,
+                                 columns=[{"name": value, "id": key} for key, value in RANK_LABELS.items()],
+                                 page_size=15, sort_action="native", style_table={"overflowX": "auto"}),
+            html.Div(id="ranking-status", children=saved_rank_status)]),
         html.Section(className="panel exports", children=[html.H2("Экспорт"),
             *[html.Button(label, id=identifier) for identifier, label in (("export-quarters", "Кварталы · CSV"), ("export-ranking", "Рейтинг · CSV"),
                 ("export-comparison", "Сценарии · CSV"), ("export-geojson", "Сценарий · GeoJSON"))]]),
@@ -246,27 +269,28 @@ def make_app(data_dir=None):
             return line, True, no_update, no_update, f"Поиск завершился ошибкой: {exc}", no_update, no_update, no_update, no_update
         with jobs_lock:
             jobs.pop(token, None)
+        suffix = "" if job["places"] == 600 else f"_{job['places']}"
         try:
-            (saved_path.parent / "automatic_ranking.csv").write_bytes(csv_bytes(pd.DataFrame(result.candidates)))
+            (saved_path.parent / f"automatic_ranking{suffix}.csv").write_bytes(csv_bytes(pd.DataFrame(result.candidates)))
+            (saved_path.parent / f"automatic_search{suffix}.json").write_text(json.dumps({
+                "source_directory": str(study.directory.resolve()), "capacity_places": job["places"],
+                "blocks_checked": result.checked, "errors": result.errors, "complete": result.complete,
+                "winners": result.winners}, ensure_ascii=False, indent=2), encoding="utf-8")
         except OSError as exc:
             line += f" Рейтинг не удалось записать на диск: {exc}."
         status = (f"Полный перебор {result.checked} кварталов. Лучшие ID: {', '.join(map(str, result.winners))}." if result.complete
                   else f"Неполный перебор: {result.errors} ошибок из {result.checked}. Глобальный оптимум НЕ установлен.")
         updated = dict(scenarios)
-        if result.complete and result.winners:
+        if result.complete and result.winners and job["places"] == 600:
             updated["В"] = {"schools": [[result.winners[0], job["places"]]], "reason": "Полный перебор; равноценные кварталы: " + ", ".join(map(str, result.winners))}
             try:
                 persist(updated)
             except OSError as exc:
                 line += f" Сценарий В не удалось записать на диск: {exc}."
-        labels = {"block_id": "ID квартала", "new_capacity_places": "Новая школа, мест",
-                  "baseline_deficit_places": "Исходный дефицит, мест", "remaining_deficit_places": "Остаточный дефицит, мест",
-                  "reduction_places": "Сокращение, мест", "reduction_pct": "Сокращение, %",
-                  "status": "Статус", "error": "Ошибка"}
-        return (line, True, list(result.candidates), [{"name": v, "id": k} for k, v in labels.items()],
-                status, updated, "В" if result.complete and result.winners else no_update,
-                "Сценарий" if result.complete and result.winners else no_update,
-                result.winners[0] if result.complete and result.winners else no_update)
+        return (line, True, list(result.candidates), [{"name": v, "id": k} for k, v in RANK_LABELS.items()],
+                status, updated, "В" if result.complete and result.winners and job["places"] == 600 else no_update,
+                "Сценарий" if result.complete and result.winners and job["places"] == 600 else no_update,
+                result.winners[0] if result.complete and result.winners and job["places"] == 600 else no_update)
 
     @app.callback(Output("view", "options"), Input("scenarios", "data"))
     def view_options(scenarios):
@@ -295,7 +319,11 @@ def make_app(data_dir=None):
         detail = "Нажмите на квартал на карте."
         if selected in study.population.index:
             row = result.rows.loc[selected]
-            detail = f"Квартал {selected} · население {_fmt(row.population)} чел. · вместимость {_fmt(int(row.capacity))} мест · спрос {_fmt(int(row.demand))} мест · дефицит {_fmt(int(row.deficit))} мест · обеспеченность {_fmt(row.provision_strong)} (доля)"
+            land_use = study.blocks.loc[selected].get("land_use", "не определено")
+            detail = (f"Квартал {selected} · население {_fmt(row.population)} чел. · вместимость {_fmt(int(row.capacity))} мест "
+                      f"· спрос {_fmt(int(row.demand))} мест · дефицит {_fmt(int(row.deficit))} мест "
+                      f"· обеспеченность {_fmt(row.provision_strong)} (доля) · использование: {land_use}. "
+                      "Возможность строительства требуется проверить отдельно.")
         legend = ("Изменение доли: красный — снижение · серый — 0 · бирюзовый — улучшение; серый квартал — показатель не определён." if mode == "Изменение"
                   else "Обеспеченность, доля 0–1: красный — низкая, бирюзовый — высокая; серый — спрос равен нулю. Школа обозначена жёлтым кругом.")
         return (figure(result, mode, selected), legend, detail, cards,
@@ -339,10 +367,11 @@ def make_app(data_dir=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=None)
+    parser.add_argument("--results-dir", type=Path, default=None)
     parser.add_argument("--port", type=int, default=8050)
     args = parser.parse_args()
     try:
-        app = make_app(args.data_dir)
+        app = make_app(args.data_dir, args.results_dir)
     except (DataError, ImportError) as exc:
         parser.exit(2, f"Не удалось запустить приложение: {exc}\n")
     app.run(debug=False, port=args.port)
