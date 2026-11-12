@@ -1,0 +1,81 @@
+{
+  "baseline_verification": "Базовый расчёт совпал с сохранённым provision_schools.csv.",
+  "blocks": 188,
+  "matrix_shape": [
+    188,
+    188
+  ],
+  "asymmetric_unordered_pairs": 6425,
+  "source_files_unchanged": true,
+  "input_sha256": {
+    "accessibility_matrix_drive.csv": "9a026f450b5ba1306490abde0b2e1d95b31e1fcac87e2e3308d05866f3c1e1a8",
+    "area_accessibility.csv": "b2e0b3b6c8dde788ee4719eb3d3dbc7fb606171c2374f895f4ad379d6b636955",
+    "blocks.geojson": "8655edfda6fb0df74df00b2dfdf63a2592471cccab189bd7af890bbd1ebd4678",
+    "blocks_city.geojson": "d818648cfffacfa0cccfd647e9bd9e2b3ab57875ac4b4057f57093d34cd27d20",
+    "blocks_indicators.csv": "49fb3ddf7e93c1f05422c1aec8451302eb8fb82ad86c785c036f1788f17310b9",
+    "blocks_indicators.geojson": "d0f4cb46f8ee51f71274c2c9ef46c49c1f6239e9188801a0adc5cf510a4f290a",
+    "boundary.geojson": "e4f4b5b9c2a1c7354aa58e909a7bed1da87cee8e86a5c052f565771b00e28ef9",
+    "density_indicators.csv": "a9c019ca7b422a0c728e04d43334ae93efdd5a4253c397f06e6ab2d93b0f4f69",
+    "provision_links_schools.csv": "82ef09c44bc3eaeea925486e8d5d56b6100bc1d57d49d722901ea049fa01f0bd",
+    "provision_schools.csv": "cbc150cee704d0d517699ef88a05508a45f9e64cc14c55e6621f0911a3fd57b0",
+    "spacematrix.csv": "6e7245eae2d9a982e34775abac177a9ceab07f7a2e365646bcef57e0e02397f7",
+    "strelka_morphotypes.csv": "da9aa0cb2ddca0993069acb16a6a3eea063992c4138755dd52063b29bd594c94",
+    "study_info.json": "f45f6983ec71f623ed53b571c96270a87f5cdcac89617704214ecb2f4d95ed49"
+  },
+  "baseline": {
+    "population": 20206.0,
+    "demand": 2504,
+    "capacity": 2424,
+    "served": 2424,
+    "deficit": 80,
+    "provision": 0.9680511182108626,
+    "added_capacity": 0
+  },
+  "scenarios": {
+    "А": {
+      "population": 20206.0,
+      "demand": 2504,
+      "capacity": 3024,
+      "served": 2472,
+      "deficit": 32,
+      "provision": 0.987220447284345,
+      "added_capacity": 600,
+      "baseline_deficit": 80,
+      "reduction": 48,
+      "reduction_pct": 60.0
+    },
+    "Б": {
+      "population": 20206.0,
+      "demand": 2504,
+      "capacity": 3024,
+      "served": 2481,
+      "deficit": 23,
+      "provision": 0.990814696485623,
+      "added_capacity": 600,
+      "baseline_deficit": 80,
+      "reduction": 57,
+      "reduction_pct": 71.25
+    },
+    "В": {
+      "population": 20206.0,
+      "demand": 2504,
+      "capacity": 3024,
+      "served": 2482,
+      "deficit": 22,
+      "provision": 0.9912140575079872,
+      "added_capacity": 600,
+      "baseline_deficit": 80,
+      "reduction": 58,
+      "reduction_pct": 72.5
+    }
+  },
+  "search_checked": 188,
+  "search_errors": 0,
+  "search_complete": true,
+  "search_winners": [
+    163
+  ],
+  "saved_ranking_matches_reexecution": true,
+  "search_elapsed_seconds": 80.01168749999852,
+  "manual_best_matches_search": true
+}

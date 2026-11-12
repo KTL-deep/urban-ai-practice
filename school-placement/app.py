@@ -266,7 +266,7 @@ def make_app(data_dir=None, results_dir=None):
             return no_update, True, "До автопоиска рассчитайте А и Б с обоснованием выбора."
         with jobs_lock:
             if any(not job["future"].done() for job in jobs.values()):
-                return no_update, True, "Поиск уже выполняется."
+                return no_update, no_update, "Поиск уже выполняется."
             token = uuid4().hex
             state = {"done": 0, "total": len(study.population), "errors": 0}
             def progress(done, total, errors):
@@ -315,21 +315,22 @@ def make_app(data_dir=None, results_dir=None):
         updated = dict(scenarios)
         if not result.complete and "В" in scenarios:
             status += " Ранее сохранённый В относится к предыдущему успешному поиску."
-        if result.complete and result.winners and job["places"] == 600:
-            updated["В"] = {"schools": [[result.winners[0], job["places"]]], "reason": "Полный перебор; равноценные кварталы: " + ", ".join(map(str, result.winners))}
+        auto_name = "В" if job["places"] == 600 else "Автопоиск"
+        if result.complete and result.winners:
+            updated[auto_name] = {"schools": [[result.winners[0], job["places"]]], "reason": "Полный перебор; равноценные кварталы: " + ", ".join(map(str, result.winners))}
             try:
                 persist(updated)
             except OSError as exc:
-                line += f" Сценарий В не удалось записать на диск: {exc}."
+                line += f" Сценарий {auto_name} не удалось записать на диск: {exc}."
         return (line, True, [{**row, "id": row["block_id"]} for row in result.candidates],
                 [{"name": v, "id": k} for k, v in RANK_LABELS.items()],
-                status, updated, "В" if result.complete and result.winners and job["places"] == 600 else no_update,
-                "Сценарий" if result.complete and result.winners and job["places"] == 600 else no_update,
-                result.winners[0] if result.complete and result.winners and job["places"] == 600 else no_update)
+                status, updated, auto_name if result.complete and result.winners else no_update,
+                "Сценарий" if result.complete and result.winners else no_update,
+                result.winners[0] if result.complete and result.winners else no_update)
 
     @app.callback(Output("view", "options"), Input("scenarios", "data"))
     def view_options(scenarios):
-        return ["Исходное состояние", *[name for name in ("А", "Б", "В", "Свой", "Кандидат") if name in scenarios]]
+        return ["Исходное состояние", *[name for name in ("А", "Б", "В", "Свой", "Автопоиск", "Кандидат") if name in scenarios]]
 
     @app.callback(Output("view", "value", allow_duplicate=True), Output("draft", "data", allow_duplicate=True),
                   Output("map-mode", "value", allow_duplicate=True),

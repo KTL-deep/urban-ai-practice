@@ -230,7 +230,8 @@ def test_reproduction_uses_only_original_notebook_code():
     assert 16 in CELLS["all"] and 21 in CELLS["all"]
 
 
-def test_ui_add_save_reset_and_download_on_test_territory(study_dir, tmp_path):
+@pytest.mark.parametrize("auto_places", [600, 450])
+def test_ui_add_save_reset_and_download_on_test_territory(study_dir, tmp_path, auto_places):
     """Exercise real Dash callbacks without writing into the Pavlovsk results."""
     from app import make_app
     instance = make_app(study_dir, tmp_path / "results")
@@ -285,7 +286,7 @@ def test_ui_add_save_reset_and_download_on_test_territory(study_dir, tmp_path):
     started = call("automatic.n_clicks", [("job", "data"), ("timer", "disabled"),
                                            ("progress", "children")],
                    [("automatic", "n_clicks", 1)],
-                   [("auto-places", "value", 600), ("scenarios", "data", chosen)])
+                   [("auto-places", "value", auto_places), ("scenarios", "data", chosen)])
     token = started["job"]["data"]
     assert token and started["timer"]["disabled"] is False
     poll_outputs = [("progress", "children"), ("timer", "disabled"), ("ranking", "data"),
@@ -299,7 +300,10 @@ def test_ui_add_save_reset_and_download_on_test_territory(study_dir, tmp_path):
             break
         time.sleep(0.05)
     assert "ranking" in finished and len(finished["ranking"]["data"]) == 3
-    assert "В" in finished["scenarios"]["data"]
+    auto_name = "В" if auto_places == 600 else "Автопоиск"
+    assert auto_name in finished["scenarios"]["data"]
+    assert finished["view"]["value"] == auto_name
+    assert finished["scenarios"]["data"][auto_name]["schools"][0][1] == auto_places
     assert finished["timer"]["disabled"] is True
     assert "3" in finished["progress"]["children"]
 
@@ -309,7 +313,7 @@ def test_ui_add_save_reset_and_download_on_test_territory(study_dir, tmp_path):
         export_inputs = [(i, "n_clicks", 1 if i == button else None) for i in
                          ("export-quarters", "export-ranking", "export-comparison", "export-geojson")]
         download = call(f"{button}.n_clicks", [("download", "data")], export_inputs,
-                        [("view", "value", "В"), ("scenarios", "data", finished["scenarios"]["data"]),
+                        [("view", "value", auto_name), ("scenarios", "data", finished["scenarios"]["data"]),
                          ("ranking", "data", finished["ranking"]["data"])])
         payload = base64.b64decode(download["download"]["data"]["content"])
         assert fragment in payload.decode("utf-8-sig")
